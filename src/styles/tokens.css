@@ -1,0 +1,93 @@
+:root {
+  --ink-950: #0a1020;
+  --ink-900: #10182b;
+  --ink-800: #18233a;
+  --ink-700: #25324a;
+  --bone-50: #fbf7ee;
+  --bone-100: #f4eee2;
+  --bone-200: #e6ddcd;
+  --bone-300: #d2c6b5;
+  --graphite-950: #151515;
+  --graphite-700: #44413d;
+  --graphite-500: #726d66;
+  --signal-orange: #ff5a36;
+  --signal-orange-dark: #d94222;
+  --signal-mint: #48e0b8;
+  --signal-mint-dark: #159a78;
+  --signal-blue: #4d6bff;
+  --signal-yellow: #f4c542;
+  --danger: #d94841;
+  --warning: #d98b27;
+  --success: #16866d;
+  --white: #fff;
+  --black: #05070c;
+  --bg: var(--bone-50);
+  --bg-subtle: var(--bone-100);
+  --surface: #fffdf8;
+  --surface-strong: var(--ink-950);
+  --surface-muted: #eee7db;
+  --text: var(--ink-950);
+  --text-soft: #4f5360;
+  --text-muted: #6e6a63;
+  --text-on-dark: var(--bone-50);
+  --border: #d8d0c3;
+  --border-strong: #aaa092;
+  --primary: var(--ink-950);
+  --accent: var(--signal-orange);
+  --accent-2: var(--signal-mint);
+  --focus: var(--signal-blue);
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --shadow-soft: 0 10px 30px rgba(31, 24, 16, 0.08);
+  --shadow-focus: 0 20px 70px rgba(10, 16, 32, 0.14);
+  --font-body: "Bricolage Grotesque", sans-serif;
+  --font-code: "IBM Plex Mono", monospace;
+  --orange-wash: rgba(255, 90, 54, 0.055);
+  --mint-wash: rgba(72, 224, 184, 0.055);
+}
+[data-theme="dark"] {
+  --bg: #090e19;
+  --bg-subtle: #0f1626;
+  --surface: #121b2d;
+  --surface-strong: #f5efe4;
+  --surface-muted: #18233a;
+  --text: #f5efe4;
+  --text-soft: #c6c0b5;
+  --text-muted: #aaa59b;
+  --text-on-dark: #0a1020;
+  --border: #26334d;
+  --border-strong: #65738e;
+  --primary: #f5efe4;
+  --accent: #ff6a47;
+  --accent-2: #52e7c0;
+  --focus: #8fa2ff;
+  --orange-wash: rgba(255, 90, 54, 0.035);
+  --mint-wash: rgba(72, 224, 184, 0.025);
+}
+[data-contrast="enhanced"] {
+  --text-muted: var(--text-soft);
+  --border: var(--border-strong);
+}
+@theme inline {
+  --font-sans: var(--font-body);
+  --font-mono: var(--font-code);
+  --color-bg: var(--bg);
+  --color-bg-subtle: var(--bg-subtle);
+  --color-surface: var(--surface);
+  --color-surface-strong: var(--surface-strong);
+  --color-text: var(--text);
+  --color-text-soft: var(--text-soft);
+  --color-text-muted: var(--text-muted);
+  --color-border: var(--border);
+  --color-primary: var(--primary);
+  --color-accent: var(--accent);
+  --color-accent-2: var(--accent-2);
+  --color-focus: var(--focus);
+  --breakpoint-desktop: 73.75rem;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+}
