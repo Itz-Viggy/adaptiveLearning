@@ -1,70 +1,135 @@
 # Vector — Adaptive Learning
 
-A React + TypeScript + Tailwind frontend for topic-based orthodontic biomechanics learning, implemented from `DesignFrontend.md`.
+Stage 0/1 of `ProductTechnicalIntegrationSpecification.md`: the existing React/Vite
+design plus a TypeScript/Fastify API, PostgreSQL identity/catalog migration and
+provisioned Supabase email-code authentication. No hosted project has been created.
 
-## Run
+## Local setup
 
-Requires Node.js 22.18+ (24 recommended) and pnpm or npm.
-
-```sh
-pnpm install
-pnpm dev
-```
-
-Open the URL printed by Vite. `/` opens the demo dashboard; `/login` opens the entry experience. With npm, use `npm install` and `npm run dev` instead.
+Use Node 24 LTS (`.node-version`) and npm. Node 22.18+ is also supported.
 
 ```sh
-pnpm build       # TypeScript checks and production bundle
-pnpm lint        # ESLint, including hooks and browser test scripts
-pnpm test        # Assessment scoring and question bank tests
+npm ci
+cp .env.example .env
 ```
 
-The build output is `dist/`. Static hosting must rewrite application routes to `index.html`.
+Fill the local environment file with the public Supabase project URL/publishable
+key for both the frontend and server, a restricted `DATABASE_URL`, and a separate
+owner `MIGRATION_DATABASE_URL`. No credential is committed. Server secrets must
+never use a `VITE_` prefix. Keep API base blank for the same origin.
 
-## Browser verification
-
-With the dev server running at `http://127.0.0.1:5173` and Google Chrome installed:
+Run the migration using the owner connection, then run the API and Vite in separate
+terminals:
 
 ```sh
-node scripts/e2e-check.mjs
-node scripts/visual-check.mjs
+npm run db:migrate
+npm run dev:server
+npm run dev
 ```
 
-The end-to-end script covers demo entry, real audio playback, seeking, speed, transcript, resume, saved assessment answers, unanswered-question recovery, score calculation, recommendation changes, prerequisite unlocking, accessible dialogs, preferences, offline status, and all nine pages at 320/390/768/1024/1440px. It also runs axe WCAG A/AA checks. Screenshots and accessibility findings are written to `/private/tmp/vector-review` on macOS.
+The API defaults to `127.0.0.1:3001`; Vite proxies `/api` and `/health` to it.
+Changing the backend port also requires changing the Vite proxy. `/` redirects to
+the guarded `/app`. Direct assessment URLs require verified authentication too.
+With no Supabase settings the existing login shows a setup message, with no demo
+authentication fallback.
 
-## Pages
+## Create the Supabase development project
 
-- `/login` — entry and local demo identity
-- `/app` — current recommendation and course trajectory
-- `/app/path` — connected topic map with accessible details
-- `/app/topic/:topicId` — material, narrated lesson, transcript, objectives, source excerpts
-- `/app/topic/:topicId/assessment` — focused assessment
-- `/app/topic/:topicId/review` — answer-specific reasoning
-- `/app/topic/:topicId/summary` — mastery change, evidence, next action
-- `/app/progress` — mastery plot, completion, assessment history
-- `/app/settings` — playback, appearance, accessibility, account
+These are operator setup steps; no project, purchase, account or remote schema was
+created during implementation.
 
-## Architecture and API handoff
+1. Create an isolated development project with fake student accounts. Keep
+   `app_private` outside the exposed schemas and disable the unused Data API.
+2. Enable email Auth and disable public sign-ups. The app calls
+   `signInWithOtp({email,options:{shouldCreateUser:false}})` and then
+   `verifyOtp({email,token,type:'email'})`. Provision accounts through Auth admin
+   tooling; never insert ordinary application SQL into `auth.users`.
+3. Configure custom SMTP and the email template to show `{{ .Token }}` instead of
+   a magic link. Configure the local Site URL and intended production URL in Auth.
+   Default SMTP is restricted and may not support the required template for new
+   projects. Follow the current [email OTP guide](https://supabase.com/docs/guides/auth/auth-email-passwordless)
+   and [SMTP guide](https://supabase.com/docs/guides/auth/auth-smtp).
+4. Enable asymmetric signing (ES256 by default; RS256 is configurable), configure
+   issuer `<SUPABASE_URL>/auth/v1`, audience `authenticated`, and a 15-minute access
+   token lifetime. The server uses project JWKS and verifies signature, algorithm,
+   issuer, audience, expiry and UUID subject, then asks Auth for the verified user.
+   Legacy HS256 and service-role authentication are rejected. See the
+   [JWT guide](https://supabase.com/docs/guides/auth/jwts).
+5. Obtain a current `sb_publishable_...` key. Set the public project settings in
+   `.env`; neither frontend nor server auth verification needs a service-role key.
+6. Use the owner connection to run `npm run db:migrate`. The migration creates a
+   NOLOGIN `app_runtime` role. Enable its LOGIN and assign a strong password through
+   operator-controlled SQL/secrets (for example, `ALTER ROLE app_runtime LOGIN
+   PASSWORD '<locally-generated-secret>';`). Put only this role's connection in
+   `DATABASE_URL`, using the provider's direct or session-pooler settings for custom
+   roles. Do not grant content writes, schema creation, superuser or bypass access.
+7. Keep verified TLS enabled. Supply the provider CA through
+   `DATABASE_SSL_CA_FILE` if required. URL TLS overrides are removed; certificate
+   verification is never disabled for a hosted connection. `DATABASE_SSL_MODE=disable`
+   is accepted only for local development databases.
+8. Provision fake A/B accounts with distinct display names. Their first `/me`
+   calls lazily create profiles; operator-only enrollment rows can then be added
+   against actual Auth user UUIDs and course IDs. A new account with no enrollment
+   receives an empty list, without fabricated history or a fallback topic.
+9. Verify live code delivery, A/B sign-in, refresh, logout and private-schema denial
+   in that development project. These live provider checks are still pending.
 
-- `src/styles/tokens.css`: exact Ink / Bone / Signal palette, semantic light/dark tokens, Tailwind mapping.
-- `src/styles/globals.css`: responsive editorial layouts, controls, one-pass motion, accessibility overrides.
-- `src/components`: application shell, topic path, custom audio controls, assessment choices, shared UI primitives.
-- `src/pages`: nine student pages, loaded by route where appropriate.
-- `src/services/mockData.ts`: all six illustrative topics, objectives, questions, explanations, source content, and initial history. Replace this fixture at the service boundary when course APIs are available.
-- `src/services/learning.ts`: explicit demonstration scoring policy. New mastery = round((prior mastery + assessment score) / 2). A latest assessment score of at least 75% recommends continuation. This is a demonstration rule, not a validated mastery model.
-- `src/store/useLearning.ts`: locally persisted preferences, listening positions, reading/listening completion, assessment drafts, results, and history. Replace persistence/synchronization with authenticated API operations when available.
-- `public/audio`: real, locally generated narration for every topic; no remote media dependency.
-
-Bricolage Grotesque and IBM Plex Mono load from Google Fonts. Dialogs and tabs use unstyled Radix primitives. Motion respects both system and in-app reduced-motion settings. The course is topic-based throughout.
-
-## Demo boundaries
-
-Institutional authentication, cloud synchronization, real instructor files, ingestion, and backend adaptation are not connected. The entry form identifies a local demo session; it is not an authentication boundary. Numeric mastery and seeded history are explicitly marked as illustrative. Learning material combines representative lecture and reading excerpts, with complete text available in the topic itself. Assessment history links to the latest review for a topic.
-
-The macOS narration can be regenerated with:
+## Verification and production
 
 ```sh
-node --experimental-strip-types scripts/generate-audio.mjs
+npm test           # API/JWT/SQL/contracts/client tests plus the existing demo unit tests
+npm run typecheck  # Frontend, backend, contracts and tests
+npm run lint
+npm run build      # Checked frontend bundle and compiled backend
+npm run api:docs   # Regenerate schema-derived server/contracts/openapi.json
+npm run test:auth  # Controlled OTP/API mocks in headless Chrome; starts its own Vite server
 ```
 
-Generation requires the macOS Samantha voice and access to speech synthesis/audio codecs. Pre-generated files are included, so generation is not required to run the app.
+The auth browser test needs Google Chrome installed. It verifies route guards,
+assessment return paths, reload, account cleanup, failures, accessibility and five
+viewport widths without a live project or email delivery. Embedded PostgreSQL tests
+execute migration SQL and role/constraint queries using PGlite. They do not verify
+hosted network/TLS/pooler behavior. See `docs/verification.md` for measured results.
+The historical `scripts/e2e-check.mjs` and `scripts/visual-check.mjs` are retained;
+their old demo-entry flow needs adaptation when later learning stages are connected.
+
+Production uses one Node service:
+
+```sh
+npm run build
+NODE_ENV=production npm start
+```
+
+It serves `dist/`, the `/api/v1` endpoints and public liveness-only `/health`.
+Application deep links fall back to `index.html`; unknown `/api` URLs return JSON
+404s. API data is private/no-store. The runtime refuses migration-owner credentials.
+Production static responses include a CSP for the app, configured Auth origin and
+existing Google Fonts. No deployment is included.
+
+## Incremental boundary
+
+The existing learning screens and all their styling remain intact as Vite
+development fixtures. They are not approved instructional content or durable
+learner evidence. Production excludes their question keys/demo calculations and
+uses the existing shell and empty-state primitives until the approved read side
+is implemented. `/app/settings` already shows the verified account and real local
+provider sign-out. Appearance preferences remain local; the authenticated API also
+supports validated profile/preference updates for later integration.
+
+The old `vector-session=demo` marker never authorizes access. Legacy
+`vector-learning-v1` identity, scores, answers, progress and history are discarded;
+only validated display preferences can migrate. Tokens belong exclusively to the
+Auth SDK, and learner/query state clears and playback stops on sign-out or account
+change. Nothing imports demo evidence into the database.
+
+`server/contracts/` freezes Section 13 public DTOs, safe response schemas and the
+Section 9 policy defaults. `content/schema.json` freezes bundle shape and external
+approval fields without implementing content import. `server/tests/fixtures/` is
+synthetic test data, not faculty-approved content. The initial migration introduces
+only profiles/courses/modules/topics/enrollments; the full 18-table plan and exact
+file changes are in `docs/stage-0-1.md`.
+
+Stage 2 adds concepts, source/range mappings, optional audio and immutable question
+versions, validated dry-run/idempotent operator import and transactional publication.
+It needs a course-owner-approved sample bundle. Read-side UI integration, private
+media, durable assessments, grading/mastery and pilot operations remain later stages.
