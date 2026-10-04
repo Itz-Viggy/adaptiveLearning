@@ -9,4 +9,4 @@ playwright-report/
 !.env.example
 server/dist/
 .agents/
-.docs/
+docs/
